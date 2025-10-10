@@ -18,6 +18,7 @@ class Client(Base):
     contact_commercial = relationship("Collaborateur", back_populates="clients")
 
     contrats = relationship("Contrat", back_populates="client")
+    evenements = relationship("Evenement", back_populates="client")
 
     def __repr__(self):
         return f"<Client(nom={self.nom_complet}, entreprise={self.entreprise})>"

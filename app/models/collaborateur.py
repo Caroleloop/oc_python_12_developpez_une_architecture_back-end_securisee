@@ -7,13 +7,13 @@ class Role(Base):
     __tablename__ = "roles"
 
     id = Column(Integer, primary_key=True)
-    nom = Column(String, unique=True, nullable=False)
+    role = Column(String, unique=True, nullable=False)
     permissions = Column(JSON, default={})  # Ex: {"client": ["read", "create"]}
 
     collaborateurs = relationship("Collaborateur", back_populates="role")
 
     def __repr__(self):
-        return f"<Role(nom={self.nom})>"
+        return f"<Role(nom={self.role})>"
 
 
 class Collaborateur(Base):
@@ -23,7 +23,6 @@ class Collaborateur(Base):
     nom = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     mot_de_passe = Column(String, nullable=False)
-    departement = Column(String, nullable=False)  # commercial, support, gestion
 
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     role = relationship("Role", back_populates="collaborateurs")

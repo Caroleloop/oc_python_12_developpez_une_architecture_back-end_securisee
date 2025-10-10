@@ -11,10 +11,14 @@ class Evenement(Base):
     date_fin = Column(DateTime, nullable=False)
     lieu = Column(String, nullable=False)
     participants = Column(Integer, nullable=False)
+    attendues = Column(Integer, nullable=True)
     notes = Column(String)
 
     contrat_id = Column(Integer, ForeignKey("contrats.id"), nullable=False)
     contrat = relationship("Contrat", back_populates="evenements")
+
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
+    client = relationship("Client", back_populates="evenements")
 
     support_contact_id = Column(Integer, ForeignKey("collaborateurs.id"), nullable=True)
     support_contact = relationship("Collaborateur", back_populates="evenements")

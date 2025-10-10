@@ -4,9 +4,6 @@ from dotenv import load_dotenv
 import os
 
 
-# Chargement sécurisé des variables d'environnement
-
-
 # Charge les variables depuis le fichier .env (ou le système)
 load_dotenv()
 

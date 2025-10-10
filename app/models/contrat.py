@@ -10,7 +10,7 @@ class Contrat(Base):
     montant_total = Column(Float, nullable=False)
     montant_restant = Column(Float, nullable=False)
     date_creation = Column(Date, nullable=False)
-    signe = Column(Boolean, default=False)
+    statut_contrat = Column(Boolean, default=False)
 
     client_id = Column(Integer, ForeignKey("clients.id"), nullable=False)
     client = relationship("Client", back_populates="contrats")
