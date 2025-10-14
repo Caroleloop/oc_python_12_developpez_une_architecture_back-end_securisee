@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 # Clé secrète pour signer le JWT
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
+JWT_ALGORITHM = "HS256"
 
 
 def login(email: str, mot_de_passe: str, expire_minutes: int = 60) -> str:
@@ -30,13 +31,13 @@ def login(email: str, mot_de_passe: str, expire_minutes: int = 60) -> str:
             raise ValueError("Email ou mot de passe incorrect")
 
         payload = {
-            "sub": collab.id,
+            "sub": str(collab.id),
             "email": collab.email,
             "role": collab.role.role,
             "exp": datetime.now(timezone.utc) + timedelta(minutes=expire_minutes),
         }
 
-        token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+        token = jwt.encode(payload, SECRET_KEY, algorithm=JWT_ALGORITHM)
         return token
 
     finally:
