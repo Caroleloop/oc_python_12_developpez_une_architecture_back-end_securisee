@@ -5,78 +5,206 @@ from app.models.collaborateur import Collaborateur, Role
 from app.models.client import Client
 from app.models.contrat import Contrat
 from app.models.evenement import Evenement
-from app.utils.db_utils import lire_table, verifier_connexion, modifier_table
+from app.utils.db_utils import read_table, add_table, update_table, delete_table
 
-app = typer.Typer(help="Commandes pour lire le contenu des tables")
+app = typer.Typer(help="Commandes CLI pour gérer les tables de la base de données")
 SessionLocal = sessionmaker(bind=engine)
 
-
-# ==================== LIRE ====================
-def lire_avec_connexion(modele):
-    """Fonction générique pour lire une table après vérification du token."""
-    verifier_connexion()  # Vérifie le token et affiche l'utilisateur connecté
-    db = SessionLocal()
-    try:
-        lire_table(db, modele)
-    finally:
-        db.close()
+# ==================== LECTURE ====================
 
 
 @app.command("read-collaborateurs")
 def read_collaborateurs():
-    """Lit la table des collaborateurs."""
-    lire_avec_connexion(Collaborateur)
+    """
+    Affiche tous les collaborateurs enregistrés dans la base de données.
+
+    Cette commande lit tous les enregistrements de la table `Collaborateur`
+    et affiche leurs informations principales.
+    """
+    read_table(Collaborateur, SessionLocal)
 
 
 @app.command("read-clients")
 def read_clients():
-    """Lit la table des clients."""
-    lire_avec_connexion(Client)
+    """
+    Affiche tous les clients enregistrés dans la base de données.
+
+    Cette commande lit tous les enregistrements de la table `Client`
+    et affiche leurs informations principales.
+    """
+    read_table(Client, SessionLocal)
 
 
 @app.command("read-contrats")
 def read_contrats():
-    """Lit la table des contrats."""
-    lire_avec_connexion(Contrat)
+    """
+    Affiche tous les contrats enregistrés dans la base de données.
+
+    Cette commande lit tous les enregistrements de la table `Contrat`
+    et affiche leurs informations principales.
+    """
+    read_table(Contrat, SessionLocal)
 
 
 @app.command("read-evenements")
 def read_evenements():
-    """Lit la table des événements."""
-    lire_avec_connexion(Evenement)
+    """
+    Affiche tous les événements enregistrés dans la base de données.
+
+    Cette commande lit tous les enregistrements de la table `Evenement`
+    et affiche leurs informations principales.
+    """
+    read_table(Evenement, SessionLocal)
 
 
 @app.command("read-roles")
 def read_roles():
-    """Lit la table des rôles."""
-    lire_avec_connexion(Role)
+    """
+    Affiche tous les rôles enregistrés dans la base de données.
+
+    Cette commande lit tous les enregistrements de la table `Role`
+    et affiche leurs informations principales.
+    """
+    read_table(Role, SessionLocal)
+
+
+# ==================== AJOUT ====================
+
+
+@app.command("add-client")
+def add_client(
+    nom_complet: str,
+    email: str,
+    telephone: str,
+    entreprise: str = typer.Option(None),
+    contact_commercial_id: int = typer.Option(None),
+):
+    """
+    Ajoute un nouveau client dans la base de données.
+
+    Paramètres :
+        nom_complet : Nom complet du client.
+        email : Adresse e-mail unique.
+        telephone : Numéro de téléphone.
+        entreprise : Nom de l'entreprise (optionnel).
+        contact_commercial_id : ID du collaborateur référent (optionnel).
+    """
+    add_table(
+        Client,
+        SessionLocal,
+        {
+            "nom_complet": nom_complet,
+            "email": email,
+            "telephone": telephone,
+            "entreprise": entreprise,
+            "contact_commercial_id": contact_commercial_id,
+        },
+    )
+
+
+@app.command("add-collaborateur")
+def add_collaborateur(nom: str, email: str, role_id: int = typer.Option(None)):
+    """
+    Ajoute un nouveau collaborateur dans la base de données.
+
+    Paramètres :
+        nom : Nom complet du collaborateur.
+        email : Adresse e-mail unique.
+        role_id : ID du rôle attribué (optionnel).
+    """
+    add_table(
+        Collaborateur,
+        SessionLocal,
+        {"nom": nom, "email": email, "role_id": role_id},
+    )
+
+
+@app.command("add-contrat")
+def add_contrat(
+    montant_total: float,
+    montant_restant: float,
+    statut_contrat: bool,
+    client_id: int,
+    contact_commercial_id: int,
+):
+    """
+    Ajoute un nouveau contrat dans la base de données.
+
+    Paramètres :
+        montant_total : Montant total du contrat.
+        montant_restant : Montant restant à payer.
+        statut_contrat : Statut du contrat (True si signé, False sinon).
+        client_id : ID du client associé.
+        contact_commercial_id : ID du collaborateur commercial responsable.
+    """
+    add_table(
+        Contrat,
+        SessionLocal,
+        {
+            "montant_total": montant_total,
+            "montant_restant": montant_restant,
+            "statut_contrat": statut_contrat,
+            "client_id": client_id,
+            "contact_commercial_id": contact_commercial_id,
+        },
+    )
+
+
+@app.command("add-evenement")
+def add_evenement(
+    date_debut: str,
+    date_fin: str,
+    lieu: str,
+    participants: int,
+    attendues: int,
+    notes: str = typer.Option(None),
+    contrat_id: int = typer.Option(None),
+    client_id: int = typer.Option(None),
+    support_contact_id: int = typer.Option(None),
+):
+    """
+    Ajoute un nouvel événement dans la base de données.
+
+    Paramètres :
+        date_debut : Date et heure de début de l'événement.
+        date_fin : Date et heure de fin de l'événement.
+        lieu : Lieu de l'événement.
+        participants : Nombre de participants.
+        attendues : Nombre de participants attendus (optionnel).
+        notes : Notes ou commentaires (optionnel).
+        contrat_id : ID du contrat associé (optionnel).
+        client_id : ID du client associé (optionnel).
+        support_contact_id : ID du collaborateur support (optionnel).
+    """
+    add_table(
+        Evenement,
+        SessionLocal,
+        {
+            "date_debut": date_debut,
+            "date_fin": date_fin,
+            "lieu": lieu,
+            "participants": participants,
+            "attendues": attendues,
+            "notes": notes,
+            "contrat_id": contrat_id,
+            "client_id": client_id,
+            "support_contact_id": support_contact_id,
+        },
+    )
+
+
+@app.command("add-role")
+def add_role(role: str):
+    """
+    Ajoute un nouveau rôle dans la base de données.
+
+    Paramètres :
+        role : Nom du rôle à ajouter.
+    """
+    add_table(Role, SessionLocal, {"role": role})
 
 
 # ==================== MODIFICATION ====================
-def update_table(
-    modele, record_id: int, champs: dict, id_field: str = "id", nom_record: str = None
-):
-    """
-    Fonction générique pour mettre à jour un enregistrement dans une table.
-    - modele : le modèle SQLAlchemy
-    - record_id : l'ID de l'enregistrement
-    - champs : dictionnaire {champ: valeur} à mettre à jour
-    - id_field : nom du champ ID (par défaut 'id')
-    - nom_record : nom de l'entité pour les messages
-    """
-    db = SessionLocal()
-    try:
-        changements = {k: v for k, v in champs.items() if v is not None}
-        if not changements:
-            typer.echo("Aucun champ fourni pour la mise à jour.")
-            raise typer.Exit()
-
-        resultat = modifier_table(db, modele, record_id, changements)
-        if resultat is None:
-            nom_record = nom_record or modele.__name__
-            typer.echo(f"{nom_record} {record_id} non trouvé.")
-    finally:
-        db.close()
 
 
 @app.command("update-client")
@@ -88,8 +216,20 @@ def update_client(
     entreprise: str = typer.Option(None),
     contact_commercial_id: int = typer.Option(None),
 ):
+    """
+    Modifie un client existant dans la base de données.
+
+    Paramètres :
+        client_id : ID du client à modifier.
+        nom_complet : Nouveau nom complet (optionnel).
+        email : Nouvelle adresse e-mail (optionnel).
+        telephone : Nouveau numéro de téléphone (optionnel).
+        entreprise : Nouveau nom d'entreprise (optionnel).
+        contact_commercial_id : Nouvel ID du collaborateur référent (optionnel).
+    """
     update_table(
         Client,
+        SessionLocal,
         client_id,
         {
             "nom_complet": nom_complet,
@@ -98,7 +238,6 @@ def update_client(
             "entreprise": entreprise,
             "contact_commercial_id": contact_commercial_id,
         },
-        nom_record="Client",
     )
 
 
@@ -109,11 +248,20 @@ def update_collaborateur(
     email: str = typer.Option(None),
     role_id: int = typer.Option(None),
 ):
+    """
+    Modifie un collaborateur existant dans la base de données.
+
+    Paramètres :
+        collab_id : ID du collaborateur à modifier.
+        nom : Nouveau nom complet (optionnel).
+        email : Nouvelle adresse e-mail (optionnel).
+        role_id : Nouvel ID du rôle attribué (optionnel).
+    """
     update_table(
         Collaborateur,
+        SessionLocal,
         collab_id,
         {"nom": nom, "email": email, "role_id": role_id},
-        nom_record="Collaborateur",
     )
 
 
@@ -126,8 +274,20 @@ def update_contrat(
     client_id: int = typer.Option(None),
     contact_commercial_id: int = typer.Option(None),
 ):
+    """
+    Modifie un contrat existant dans la base de données.
+
+    Paramètres :
+        contrat_id : ID du contrat à modifier.
+        montant_total : Nouveau montant total (optionnel).
+        montant_restant : Nouveau montant restant (optionnel).
+        statut_contrat : Nouveau statut (optionnel).
+        client_id : Nouvel ID du client associé (optionnel).
+        contact_commercial_id : Nouvel ID du collaborateur commercial (optionnel).
+    """
     update_table(
         Contrat,
+        SessionLocal,
         contrat_id,
         {
             "montant_total": montant_total,
@@ -136,7 +296,6 @@ def update_contrat(
             "client_id": client_id,
             "contact_commercial_id": contact_commercial_id,
         },
-        nom_record="Contrat",
     )
 
 
@@ -153,8 +312,24 @@ def update_evenement(
     client_id: int = typer.Option(None),
     support_contact_id: int = typer.Option(None),
 ):
+    """
+    Modifie un événement existant dans la base de données.
+
+    Paramètres :
+        evenement_id : ID de l'événement à modifier.
+        date_debut : Nouvelle date et heure de début (optionnel).
+        date_fin : Nouvelle date et heure de fin (optionnel).
+        lieu : Nouveau lieu (optionnel).
+        participants : Nouveau nombre de participants (optionnel).
+        attendues : Nouveau nombre de participants attendus (optionnel).
+        notes : Nouvelles notes ou commentaires (optionnel).
+        contrat_id : Nouvel ID du contrat associé (optionnel).
+        client_id : Nouvel ID du client associé (optionnel).
+        support_contact_id : Nouvel ID du collaborateur support (optionnel).
+    """
     update_table(
         Evenement,
+        SessionLocal,
         evenement_id,
         {
             "date_debut": date_debut,
@@ -167,13 +342,52 @@ def update_evenement(
             "client_id": client_id,
             "support_contact_id": support_contact_id,
         },
-        nom_record="Événement",
     )
 
 
 @app.command("update-role")
 def update_role(role_id: int, role: str = typer.Option(None)):
-    update_table(Role, role_id, {"role": role}, nom_record="Role")
+    """
+    Modifie un rôle existant dans la base de données.
+
+    Paramètres :
+        role_id : ID du rôle à modifier.
+        role : Nouveau nom du rôle (optionnel).
+    """
+    update_table(Role, SessionLocal, role_id, {"role": role})
+
+
+# ==================== SUPPRESSION ====================
+
+
+@app.command("delete-client")
+def delete_client(client_id: int):
+    """Supprime un client de la base de données."""
+    delete_table(Client, SessionLocal, client_id)
+
+
+@app.command("delete-collaborateur")
+def delete_collaborateur(collab_id: int):
+    """Supprime un collaborateur de la base de données."""
+    delete_table(Collaborateur, SessionLocal, collab_id)
+
+
+@app.command("delete-contrat")
+def delete_contrat(contrat_id: int):
+    """Supprime un contrat de la base de données."""
+    delete_table(Contrat, SessionLocal, contrat_id)
+
+
+@app.command("delete-evenement")
+def delete_evenement(evenement_id: int):
+    """Supprime un événement de la base de données."""
+    delete_table(Evenement, SessionLocal, evenement_id)
+
+
+@app.command("delete-role")
+def delete_role(role_id: int):
+    """Supprime un rôle de la base de données."""
+    delete_table(Role, SessionLocal, role_id)
 
 
 if __name__ == "__main__":

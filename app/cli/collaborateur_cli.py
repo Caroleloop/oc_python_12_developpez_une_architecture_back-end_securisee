@@ -7,7 +7,7 @@ from app.models.client import Client
 from app.models.contrat import Contrat
 from app.models.evenement import Evenement
 
-# Liste de tous les modèles pour d'éventuelles opérations globales (ex: création de tables)
+# Liste de tous les modèles pour d'éventuelles opérations globales
 all_models = [Client, Contrat, Evenement, Collaborateur, Role]
 
 # Initialise l'application Typer pour gérer les commandes CLI liées aux collaborateurs
@@ -18,7 +18,7 @@ SessionLocal = sessionmaker(bind=engine)
 
 
 @app.command("create")
-def creer_collaborateur(
+def create_collaborateur(
     nom: str = typer.Option(..., "--nom", help="Nom complet du collaborateur"),
     email: str = typer.Option(..., "--email", help="Adresse e-mail unique"),
     mot_de_passe: str = typer.Option(
@@ -32,10 +32,10 @@ def creer_collaborateur(
     Crée un nouveau collaborateur avec un rôle donné.
 
     Étapes :
-        1. Vérifie si le rôle existe.
-        2. Hache le mot de passe pour la sécurité.
+        1. Vérifie si le rôle existe dans la base.
+        2. Hache le mot de passe pour le stocker de manière sécurisée.
         3. Crée l'objet Collaborateur avec les informations fournies.
-        4. Ajoute le collaborateur à la base de données.
+        4. Ajoute le collaborateur à la base de données et commit.
 
     Paramètres CLI :
         --nom : Nom complet du collaborateur.
@@ -44,7 +44,7 @@ def creer_collaborateur(
         --role : Nom du rôle attribué au collaborateur.
     """
     db = SessionLocal()
-    # Vérifie si le rôle existe dans la base
+    # Vérifie si le rôle spécifié existe
     role = db.query(Role).filter_by(role=nom_role).first()
     if not role:
         typer.echo(f"Le rôle '{nom_role}' n'existe pas.")
@@ -58,7 +58,7 @@ def creer_collaborateur(
         nom=nom, email=email, mot_de_passe=mot_de_passe_hache, role=role
     )
 
-    # Ajoute le collaborateur à la session et commit
+    # Ajoute à la session et commit pour enregistrer le collaborateur
     db.add(nouveau_collab)
     db.commit()
     typer.echo(f"Collaborateur '{nom}' créé avec succès !")
@@ -80,11 +80,12 @@ def lister_collaborateurs():
     if not collaborateurs:
         typer.echo("Aucun collaborateur trouvé.")
         return
+
     # Parcours et affichage de chaque collaborateur
     for c in collaborateurs:
         typer.echo(f"{c.id}: {c.nom} ({c.email}) - rôle: {c.role.role}")
 
 
 if __name__ == "__main__":
-    # Démarre l'application CLI Typer
+    # Démarre l'application CLI Typer uniquement si ce fichier est exécuté directement
     app()
