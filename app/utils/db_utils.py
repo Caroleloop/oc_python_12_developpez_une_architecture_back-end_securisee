@@ -3,6 +3,8 @@ import os
 from sqlalchemy import inspect
 from typing import Type
 from app.auth.utils import verifier_token
+from werkzeug.security import generate_password_hash
+from app.models.collaborateur import Collaborateur
 
 
 # ==================== AUTH ====================
@@ -33,6 +35,15 @@ def verifier_connexion():
 
 
 # ==================== FONCTIONS CRUD ====================
+def add_collaborateur(SessionLocal, nom, email, mot_de_passe, role_id=None):
+    """
+    Ajoute un collaborateur en hachant le mot de passe.
+    """
+    mot_de_passe_hache = generate_password_hash(mot_de_passe)
+    data = {"nom": nom, "email": email, "mot_de_passe": mot_de_passe_hache}
+    if role_id is not None:
+        data["role_id"] = role_id
+    return add_table(Collaborateur, SessionLocal, data)
 
 
 def read_table(modele: Type, SessionLocal):

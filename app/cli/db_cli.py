@@ -5,7 +5,13 @@ from app.models.collaborateur import Collaborateur, Role
 from app.models.client import Client
 from app.models.contrat import Contrat
 from app.models.evenement import Evenement
-from app.utils.db_utils import read_table, add_table, update_table, delete_table
+from app.utils.db_utils import (
+    read_table,
+    add_table,
+    update_table,
+    delete_table,
+    add_collaborateur,
+)
 
 app = typer.Typer(help="Commandes CLI pour gérer les tables de la base de données")
 SessionLocal = sessionmaker(bind=engine)
@@ -103,20 +109,17 @@ def add_client(
 
 
 @app.command("add-collaborateur")
-def add_collaborateur(nom: str, email: str, role_id: int = typer.Option(None)):
+def cli_add_collaborateur(
+    nom: str,
+    email: str,
+    mot_de_passe: str = typer.Option(..., prompt=True, hide_input=True),
+    role_id: int = typer.Option(None),
+):
     """
-    Ajoute un nouveau collaborateur dans la base de données.
-
-    Paramètres :
-        nom : Nom complet du collaborateur.
-        email : Adresse e-mail unique.
-        role_id : ID du rôle attribué (optionnel).
+    Ajoute un collaborateur avec mot de passe haché.
     """
-    add_table(
-        Collaborateur,
-        SessionLocal,
-        {"nom": nom, "email": email, "role_id": role_id},
-    )
+    collab = add_collaborateur(SessionLocal, nom, email, mot_de_passe, role_id)
+    typer.echo(f"Collaborateur '{collab['nom']}' ajouté avec succès !")
 
 
 @app.command("add-contrat")
