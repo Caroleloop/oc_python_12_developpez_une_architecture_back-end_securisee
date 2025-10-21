@@ -11,7 +11,9 @@ from app.utils.db_utils import (
     update_table,
     delete_table,
     add_collaborateur,
+    verifier_permission,
 )
+
 
 app = typer.Typer(help="Commandes CLI pour gérer les tables de la base de données")
 SessionLocal = sessionmaker(bind=engine)
@@ -27,6 +29,9 @@ def read_collaborateurs():
     Cette commande lit tous les enregistrements de la table `Collaborateur`
     et affiche leurs informations principales.
     """
+    if not verifier_permission("read", "collaborateurs"):
+        return
+
     read_table(Collaborateur, SessionLocal)
 
 
@@ -38,6 +43,10 @@ def read_clients():
     Cette commande lit tous les enregistrements de la table `Client`
     et affiche leurs informations principales.
     """
+
+    if not verifier_permission("read", "clients"):
+        return
+
     read_table(Client, SessionLocal)
 
 
@@ -49,6 +58,10 @@ def read_contrats():
     Cette commande lit tous les enregistrements de la table `Contrat`
     et affiche leurs informations principales.
     """
+
+    if not verifier_permission("read", "contrats"):
+        return
+
     read_table(Contrat, SessionLocal)
 
 
@@ -60,6 +73,10 @@ def read_evenements():
     Cette commande lit tous les enregistrements de la table `Evenement`
     et affiche leurs informations principales.
     """
+
+    if not verifier_permission("read", "evenements"):
+        return
+
     read_table(Evenement, SessionLocal)
 
 
@@ -71,7 +88,11 @@ def read_roles():
     Cette commande lit tous les enregistrements de la table `Role`
     et affiche leurs informations principales.
     """
-    read_table(Role, SessionLocal)
+
+    if not verifier_permission("read", "roles"):
+        return
+
+    return read_table(Role, SessionLocal)
 
 
 # ==================== AJOUT ====================
@@ -95,6 +116,10 @@ def add_client(
         entreprise : Nom de l'entreprise (optionnel).
         contact_commercial_id : ID du collaborateur référent (optionnel).
     """
+
+    if not verifier_permission("create", "client"):
+        return
+
     add_table(
         Client,
         SessionLocal,
@@ -118,6 +143,10 @@ def cli_add_collaborateur(
     """
     Ajoute un collaborateur avec mot de passe haché.
     """
+
+    if not verifier_permission("create", "collaborateur"):
+        return
+
     collab = add_collaborateur(SessionLocal, nom, email, mot_de_passe, role_id)
     typer.echo(f"Collaborateur '{collab['nom']}' ajouté avec succès !")
 
@@ -140,6 +169,10 @@ def add_contrat(
         client_id : ID du client associé.
         contact_commercial_id : ID du collaborateur commercial responsable.
     """
+
+    if not verifier_permission("create", "contrat"):
+        return
+
     add_table(
         Contrat,
         SessionLocal,
@@ -179,6 +212,10 @@ def add_evenement(
         client_id : ID du client associé (optionnel).
         support_contact_id : ID du collaborateur support (optionnel).
     """
+
+    if not verifier_permission("create", "evenement"):
+        return
+
     add_table(
         Evenement,
         SessionLocal,
@@ -204,6 +241,10 @@ def add_role(role: str):
     Paramètres :
         role : Nom du rôle à ajouter.
     """
+
+    if not verifier_permission("create", "role"):
+        return
+
     add_table(Role, SessionLocal, {"role": role})
 
 
@@ -230,6 +271,10 @@ def update_client(
         entreprise : Nouveau nom d'entreprise (optionnel).
         contact_commercial_id : Nouvel ID du collaborateur référent (optionnel).
     """
+
+    if not verifier_permission("update", "client"):
+        return
+
     update_table(
         Client,
         SessionLocal,
@@ -260,6 +305,10 @@ def update_collaborateur(
         email : Nouvelle adresse e-mail (optionnel).
         role_id : Nouvel ID du rôle attribué (optionnel).
     """
+
+    if not verifier_permission("update", "collaborateur"):
+        return
+
     update_table(
         Collaborateur,
         SessionLocal,
@@ -288,6 +337,10 @@ def update_contrat(
         client_id : Nouvel ID du client associé (optionnel).
         contact_commercial_id : Nouvel ID du collaborateur commercial (optionnel).
     """
+
+    if not verifier_permission("update", "contrat"):
+        return
+
     update_table(
         Contrat,
         SessionLocal,
@@ -330,6 +383,10 @@ def update_evenement(
         client_id : Nouvel ID du client associé (optionnel).
         support_contact_id : Nouvel ID du collaborateur support (optionnel).
     """
+
+    if not verifier_permission("update", "evenement"):
+        return
+
     update_table(
         Evenement,
         SessionLocal,
@@ -357,6 +414,10 @@ def update_role(role_id: int, role: str = typer.Option(None)):
         role_id : ID du rôle à modifier.
         role : Nouveau nom du rôle (optionnel).
     """
+
+    if not verifier_permission("update", "role"):
+        return
+
     update_table(Role, SessionLocal, role_id, {"role": role})
 
 
@@ -366,30 +427,50 @@ def update_role(role_id: int, role: str = typer.Option(None)):
 @app.command("delete-client")
 def delete_client(client_id: int):
     """Supprime un client de la base de données."""
+
+    if not verifier_permission("delete", "client"):
+        return
+
     delete_table(Client, SessionLocal, client_id)
 
 
 @app.command("delete-collaborateur")
 def delete_collaborateur(collab_id: int):
     """Supprime un collaborateur de la base de données."""
+
+    if not verifier_permission("delete", "collaborateur"):
+        return
+
     delete_table(Collaborateur, SessionLocal, collab_id)
 
 
 @app.command("delete-contrat")
 def delete_contrat(contrat_id: int):
     """Supprime un contrat de la base de données."""
+
+    if not verifier_permission("delete", "contrat"):
+        return
+
     delete_table(Contrat, SessionLocal, contrat_id)
 
 
 @app.command("delete-evenement")
 def delete_evenement(evenement_id: int):
     """Supprime un événement de la base de données."""
+
+    if not verifier_permission("delete", "evenement"):
+        return
+
     delete_table(Evenement, SessionLocal, evenement_id)
 
 
 @app.command("delete-role")
 def delete_role(role_id: int):
     """Supprime un rôle de la base de données."""
+
+    if not verifier_permission("delete", "role"):
+        return
+
     delete_table(Role, SessionLocal, role_id)
 
 

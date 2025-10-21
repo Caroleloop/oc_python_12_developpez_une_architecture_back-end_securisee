@@ -1,10 +1,12 @@
 import typer
+from pprint import pprint
 import os
 from sqlalchemy import inspect
 from typing import Type
 from app.auth.utils import verifier_token
 from werkzeug.security import generate_password_hash
 from app.models.collaborateur import Collaborateur
+from app.auth.permissions import DEFAULT_PERMISSIONS
 
 
 # ==================== AUTH ====================
@@ -32,6 +34,25 @@ def verifier_connexion():
     payload = verifier_token(token)
     typer.echo(f"Utilisateur connecté : {payload['email']} ({payload['role']})")
     return payload
+
+
+def verifier_permission(action: str, resource: str) -> bool:
+    """
+    Vérifie si l'utilisateur connecté a la permission d'effectuer une action
+    sur une ressource donnée (ex: "create" sur "client").
+
+    Retourne True si la permission est accordée, False sinon.
+    """
+    payload = verifier_connexion()
+    connected_user_role = payload["role"]
+
+    if action not in DEFAULT_PERMISSIONS.get(connected_user_role, {}).get(resource, []):
+        typer.echo(
+            f"Le rôle '{connected_user_role}' n'a pas le droit de {action} un(e) {resource}."
+        )
+        return False
+
+    return True
 
 
 # ==================== FONCTIONS CRUD ====================
@@ -70,6 +91,7 @@ def read_table(modele: Type, SessionLocal):
             data = {col: getattr(obj, col) for col in colonnes}
             resultats.append(data)
             typer.echo(" | ".join(f"{k}: {v}" for k, v in data.items()))
+        pprint(resultats)
         return resultats
     finally:
         db.close()
