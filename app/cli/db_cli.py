@@ -4,6 +4,7 @@ from werkzeug.security import (
     generate_password_hash,
 )  # Pour sécuriser les mots de passe des collaborateurs
 from sqlalchemy.orm import sessionmaker
+from sentry_init import sentry_sdk
 from sqlalchemy import inspect
 from app.database import engine  # Connexion à la base de données
 from app.models.collaborateur import Collaborateur, Role
@@ -206,7 +207,7 @@ def add_contrat(
     montant_restant = validate_montant_restant(montant_total, montant_restant)
     contact_commercial_id = payload["id"] if payload["role"] == "commercial" else None
 
-    add_table(
+    collatéral = add_table(
         Contrat,
         SessionLocal,
         {
@@ -217,6 +218,10 @@ def add_contrat(
             "contact_commercial_id": contact_commercial_id,
         },
     )
+    if statut_contrat:
+        sentry_sdk.capture_message(
+            f"Contrat signé : ID {collatéral['id']} pour client {client_id}"
+        )
 
 
 @app.command("add-evenement")
@@ -621,4 +626,8 @@ def filter_contrats(non_signe: bool = False, non_payes: bool = False):
 
 
 if __name__ == "__main__":
-    app()
+    try:
+        app()
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
+        raise

@@ -4,6 +4,8 @@ import re
 from datetime import datetime
 from sqlalchemy import inspect
 from typing import Type
+from sentry_init import sentry_sdk
+from functools import wraps
 from app.auth.utils import verifier_token  # Pour décoder et vérifier le JWT
 from werkzeug.security import generate_password_hash  # Pour sécuriser les mots de passe
 from app.models.collaborateur import Collaborateur
@@ -15,6 +17,34 @@ from rich.panel import Panel
 
 # Initialisation de la console Rich pour affichage coloré
 console = Console()
+
+
+# ==================== DÉCORATEURS ====================
+
+
+def log_sentry(message_template: str):
+    """Décorateur pour logger un message Sentry après exécution et capturer exceptions."""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                result = func(*args, **kwargs)
+                try:
+                    msg = message_template.format(
+                        result=result, args=args, kwargs=kwargs
+                    )
+                    sentry_sdk.capture_message(msg)
+                except Exception as e:
+                    sentry_sdk.capture_exception(e)
+                return result
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+                raise
+
+        return wrapper
+
+    return decorator
 
 
 # ==================== AUTH ====================
@@ -150,6 +180,7 @@ def afficher_table(modele: Type, resultats: list[dict]):
 # ==================== FONCTIONS CRUD ====================
 
 
+@log_sentry("Collaborateur créé : {result[nom]} ({result[email]})")
 def add_collaborateur(SessionLocal, nom, email, mot_de_passe, role_id=None):
     """
     Ajoute un collaborateur en hachant le mot de passe.
@@ -257,6 +288,9 @@ def update_table(
                 border_style="green",
             )
         )
+        # Log Sentry si collaborateur
+        if modele.__name__ == "Collaborateur":
+            sentry_sdk.capture_message(f"Collaborateur {record_id} modifié : {data}")
         return {col: getattr(instance, col) for col in colonnes}
     finally:
         db.close()
