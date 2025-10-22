@@ -4,6 +4,7 @@ from werkzeug.security import (
     generate_password_hash,
 )  # Pour sécuriser les mots de passe des collaborateurs
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import inspect
 from app.database import engine  # Connexion à la base de données
 from app.models.collaborateur import Collaborateur, Role
 from app.models.client import Client
@@ -16,11 +17,14 @@ from app.utils.db_utils import (
     delete_table,
     add_collaborateur,
     verifier_permission,
+    verifier_connexion,
     validate_montant_restant,
     validate_participants,
     validate_email,
     validate_positive_float,
     validate_single_date,
+    afficher_table,
+    can_create_evenement,
 )
 
 # Initialise la console Rich pour l'affichage coloré
@@ -137,7 +141,9 @@ def add_client(
     if not verifier_permission("creer", "client"):
         return
 
+    payload = verifier_connexion()
     email = validate_email(email)  # Vérifie la validité de l'email
+    contact_commercial_id = payload["id"] if payload["role"] == "commercial" else None
 
     add_table(
         Client,
@@ -195,9 +201,10 @@ def add_contrat(
 
     if not verifier_permission("creer", "contrat"):
         return
-
+    payload = verifier_connexion()
     montant_total = validate_positive_float(montant_total)
     montant_restant = validate_montant_restant(montant_total, montant_restant)
+    contact_commercial_id = payload["id"] if payload["role"] == "commercial" else None
 
     add_table(
         Contrat,
@@ -242,6 +249,13 @@ def add_evenement(
     if not verifier_permission("creer", "evenement"):
         return
 
+    payload = verifier_connexion()
+    db = SessionLocal()
+    contrat = db.query(Contrat).filter(Contrat.id == contrat_id).first()
+    if not can_create_evenement(payload, contrat):
+        db.close()
+        return
+
     date_debut = validate_single_date(date_debut)
     date_fin = validate_single_date(date_fin)
     participants, attendues = validate_participants(participants, attendues)
@@ -255,12 +269,12 @@ def add_evenement(
             "lieu": lieu,
             "participants": participants,
             "attendues": attendues,
-            "notes": notes,
             "contrat_id": contrat_id,
-            "client_id": client_id,
-            "support_contact_id": support_contact_id,
+            "client_id": contrat.client_id if contrat else None,
+            "support_contact_id": None,
         },
     )
+    db.close()
 
 
 @app.command("add-role")
@@ -538,6 +552,72 @@ def delete_role(role_id: int):
         return
 
     delete_table(Role, SessionLocal, role_id)
+
+
+# ====================  COMMANDES DE FILTRAGE ====================
+# Commandes pour filter des enregistrements
+
+
+@app.command("filter-evenements")
+def filter_evenements(sans_support: bool = False, support_contact_id: int = None):
+    """
+    Filtre les événements selon :
+      - --sans-support : événements sans support associé
+      - (automatique) support : uniquement ses propres événements
+    """
+    if not verifier_permission("lire", "evenement"):
+        return
+
+    payload = verifier_connexion()
+    db = SessionLocal()
+    query = db.query(Evenement)
+
+    # Les supports ne voient que leurs événements
+    if payload["role"] == "support":
+        query = query.filter(Evenement.support_contact_id == payload["id"])
+    elif sans_support:
+        query = query.filter(Evenement.support_contact_id.is_(None))
+
+    resultats = [
+        {
+            col.key: getattr(ev, col.key)
+            for col in inspect(Evenement).mapper.column_attrs
+        }
+        for ev in query.all()
+    ]
+    afficher_table(Evenement, resultats)
+    db.close()
+
+
+@app.command("filter-contrats")
+def filter_contrats(non_signe: bool = False, non_payes: bool = False):
+    """
+    Filtre les contrats selon le statut.
+    Exemple :
+      - --non-signe  : contrats non signés
+      - --non-payes  : contrats avec montant restant > 0
+    """
+    if not verifier_permission("lire", "contrat"):
+        return
+
+    payload = verifier_connexion()
+    db = SessionLocal()
+    query = db.query(Contrat)
+
+    if payload["role"] == "commercial":
+        query = db.query(Contrat).filter(Contrat.contact_commercial_id == payload["id"])
+
+    if non_signe:
+        query = query.filter(~Contrat.statut_contrat)
+    if non_payes:
+        query = query.filter(Contrat.montant_restant > 0)
+
+    resultats = [
+        {col.key: getattr(c, col.key) for col in inspect(Contrat).mapper.column_attrs}
+        for c in query.all()
+    ]
+    afficher_table(Contrat, resultats)
+    db.close()
 
 
 if __name__ == "__main__":

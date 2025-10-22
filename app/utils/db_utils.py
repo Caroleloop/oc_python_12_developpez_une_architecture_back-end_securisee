@@ -18,6 +18,8 @@ console = Console()
 
 
 # ==================== AUTH ====================
+
+
 def verifier_connexion():
     """
     Vérifie que l'utilisateur est connecté et que le token JWT est valide.
@@ -75,6 +77,8 @@ def verifier_permission(action: str, resource: str) -> bool:
 
 
 # ---------------- VALIDATION ----------------
+
+
 def validate_email(email: str) -> str:
     pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     if not re.match(pattern, email):
@@ -144,6 +148,8 @@ def afficher_table(modele: Type, resultats: list[dict]):
 
 
 # ==================== FONCTIONS CRUD ====================
+
+
 def add_collaborateur(SessionLocal, nom, email, mot_de_passe, role_id=None):
     """
     Ajoute un collaborateur en hachant le mot de passe.
@@ -291,3 +297,29 @@ def delete_table(modele: Type, SessionLocal, record_id: int, id_field: str = "id
         )
     finally:
         db.close()
+
+
+# ==================== UTILITAIRES METIER ====================
+
+
+def can_create_evenement(payload: dict, contrat) -> bool:
+    """
+    Vérifie si l'utilisateur peut créer un événement pour ce contrat.
+
+    - payload : dictionnaire contenant au minimum le rôle et l'email
+    - contrat : instance du contrat ou None
+
+    Retour :
+        bool : True si l'utilisateur peut créer l'événement, False sinon
+    """
+    from rich.console import Console
+
+    console = Console()
+
+    if payload["role"] == "commercial":
+        if not contrat or not contrat.statut_contrat:
+            console.print(
+                "[bold red]Impossible de créer un événement : contrat non signé[/]"
+            )
+            return False
+    return True
