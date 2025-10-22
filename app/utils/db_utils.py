@@ -1,17 +1,21 @@
 import typer
-from pprint import pprint
 import os
+import re
+from datetime import datetime
 from sqlalchemy import inspect
 from typing import Type
 from app.auth.utils import verifier_token
 from werkzeug.security import generate_password_hash
 from app.models.collaborateur import Collaborateur
 from app.auth.permissions import DEFAULT_PERMISSIONS
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+
+console = Console()
 
 
 # ==================== AUTH ====================
-
-
 def verifier_connexion():
     """
     Vérifie que l'utilisateur est connecté et que le token JWT est valide.
@@ -25,14 +29,16 @@ def verifier_connexion():
     """
     token_path = ".token"
     if not os.path.exists(token_path):
-        typer.echo(
-            "Aucun token trouvé. Veuillez vous connecter avant de lire les données."
+        console.print(
+            "[bold red]Aucun token trouvé. Veuillez vous connecter avant de lire les données.[/]"
         )
         raise typer.Exit(code=1)
     with open(token_path, "r") as f:
         token = f.read().strip()
     payload = verifier_token(token)
-    typer.echo(f"Utilisateur connecté : {payload['email']} ({payload['role']})")
+    console.print(
+        f"[bold green]Utilisateur connecté :[/] [cyan]{payload['email']}[/] ([magenta]{payload['role']}[/])"
+    )
     return payload
 
 
@@ -47,12 +53,85 @@ def verifier_permission(action: str, resource: str) -> bool:
     connected_user_role = payload["role"]
 
     if action not in DEFAULT_PERMISSIONS.get(connected_user_role, {}).get(resource, []):
-        typer.echo(
-            f"Le rôle '{connected_user_role}' n'a pas le droit de {action} un(e) {resource}."
+        console.print(
+            Panel.fit(
+                f"[bold red]Accès refusé[/]\n"
+                f"[white]Le rôle [yellow]{connected_user_role}[/yellow] n’est pas autorisé à "
+                f"[cyan]{action}[/cyan] la table [bold]{resource}[/bold].[/]",
+                border_style="red",
+            )
         )
         return False
 
     return True
+
+
+# ---------------- VALIDATION ----------------
+def validate_email(email: str) -> str:
+    pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+    if not re.match(pattern, email):
+        raise typer.BadParameter("Email invalide")
+    return email
+
+
+def validate_positive_float(value: float) -> float:
+    if value < 0:
+        raise typer.BadParameter("La valeur doit être positive")
+    return value
+
+
+def validate_montant_restant(montant_total: float, montant_restant: float) -> float:
+    """
+    Vérifie que montant_restant >= 0 et <= montant_total
+    """
+    if montant_restant < 0:
+        raise typer.BadParameter("montant_restant doit être supérieur ou égal à 0")
+    if montant_restant > montant_total:
+        raise typer.BadParameter("montant_restant ne peut pas dépasser montant_total")
+    return montant_restant
+
+
+def validate_event_dates(date_debut: str, date_fin: str) -> tuple[str, str]:
+    """
+    Vérifie que les dates sont au format ISO et que date_fin >= date_debut
+    """
+    try:
+        d1 = datetime.fromisoformat(date_debut)
+        d2 = datetime.fromisoformat(date_fin)
+    except ValueError:
+        raise typer.BadParameter("Format de date invalide (YYYY-MM-DD HH:MM:SS)")
+    if d2 < d1:
+        raise typer.BadParameter("date_fin doit être supérieure ou égale à date_debut")
+    return date_debut, date_fin
+
+
+def validate_participants(participants: int, attendues: int) -> tuple[int, int]:
+    """
+    Vérifie que participants >= 0, attendues >= 0 et attendues <= participants
+    """
+    if participants < 0:
+        raise typer.BadParameter("participants doit être supérieur ou égal à 0")
+    if attendues < 0:
+        raise typer.BadParameter("attendues doit être supérieur ou égal à 0")
+    if attendues > participants:
+        raise typer.BadParameter("attendues ne peut pas dépasser participants")
+    return participants, attendues
+
+
+# ==================== AFFICHAGE RICH ====================
+
+
+def afficher_table(modele: Type, resultats: list[dict]):
+    """Affiche les résultats d'une table sous forme de tableau coloré."""
+    if not resultats:
+        console.print(f"[yellow]Aucune donnée trouvée dans {modele.__name__}.[/]")
+        return
+    table = Table(title=f"{modele.__name__}", header_style="bold cyan")
+    for col in resultats[0].keys():
+        table.add_column(col, style="white")
+    for ligne in resultats:
+        table.add_row(*[str(v) if v is not None else "" for v in ligne.values()])
+    console.print(table)
 
 
 # ==================== FONCTIONS CRUD ====================
@@ -78,20 +157,13 @@ def read_table(modele: Type, SessionLocal):
     Retour :
         list[dict] : Liste des enregistrements sous forme de dictionnaires.
     """
-    verifier_connexion()
+
     db = SessionLocal()
     try:
         colonnes = [c.key for c in inspect(modele).mapper.column_attrs]
         lignes = db.query(modele).all()
-        if not lignes:
-            typer.echo(f"Aucune donnée trouvée dans {modele.__name__}.")
-            return []
-        resultats = []
-        for obj in lignes:
-            data = {col: getattr(obj, col) for col in colonnes}
-            resultats.append(data)
-            typer.echo(" | ".join(f"{k}: {v}" for k, v in data.items()))
-        pprint(resultats)
+        resultats = [{col: getattr(obj, col) for col in colonnes} for obj in lignes]
+        afficher_table(modele, resultats)
         return resultats
     finally:
         db.close()
@@ -109,7 +181,7 @@ def add_table(modele: Type, SessionLocal, data: dict):
     Retour :
         dict : Données de l'enregistrement ajouté sous forme de dictionnaire.
     """
-    verifier_connexion()
+
     db = SessionLocal()
     try:
         colonnes = [c.key for c in inspect(modele).mapper.column_attrs]
@@ -118,7 +190,7 @@ def add_table(modele: Type, SessionLocal, data: dict):
         db.add(instance)
         db.commit()
         db.refresh(instance)
-        typer.echo(f"{modele.__name__} ajouté avec succès !")
+        console.print(f"[bold green]{modele.__name__} ajouté avec succès ![/]")
         return {col: getattr(instance, col) for col in colonnes}
     finally:
         db.close()
@@ -140,7 +212,7 @@ def update_table(
     Retour :
         dict : Données mises à jour de l'enregistrement sous forme de dictionnaire.
     """
-    verifier_connexion()
+
     db = SessionLocal()
     try:
         colonnes = [c.key for c in inspect(modele).mapper.column_attrs]
@@ -148,13 +220,15 @@ def update_table(
             db.query(modele).filter(getattr(modele, id_field) == record_id).first()
         )
         if not instance:
-            typer.echo(f"{modele.__name__} {record_id} non trouvé.")
+            console.print(f"[red] {modele.__name__} {record_id} non trouvé.[/]")
             return
         for k, v in data.items():
             if k in colonnes and v is not None:
                 setattr(instance, k, v)
         db.commit()
-        typer.echo(f"{modele.__name__} {record_id} mis à jour avec succès !")
+        console.print(
+            f"[bold green]{modele.__name__} {record_id} mis à jour avec succès ![/]"
+        )
         return {col: getattr(instance, col) for col in colonnes}
     finally:
         db.close()
@@ -170,7 +244,6 @@ def delete_table(modele: Type, SessionLocal, record_id: int, id_field: str = "id
         record_id : ID de l'enregistrement à supprimer.
         id_field : Nom de la colonne ID utilisée pour identifier l'enregistrement (par défaut "id").
     """
-    verifier_connexion()
     db = SessionLocal()
     try:
         instance = (
@@ -179,10 +252,12 @@ def delete_table(modele: Type, SessionLocal, record_id: int, id_field: str = "id
             .one_or_none()
         )
         if not instance:
-            typer.echo(f"{modele.__name__} {record_id} non trouvé.")
+            console.print(f"[red]{modele.__name__} {record_id} non trouvé.[/]")
             return
         db.delete(instance)
         db.commit()
-        typer.echo(f"{modele.__name__} {record_id} supprimé avec succès !")
+        console.print(
+            f"[bold red]{modele.__name__} {record_id} supprimé avec succès ![/]"
+        )
     finally:
         db.close()

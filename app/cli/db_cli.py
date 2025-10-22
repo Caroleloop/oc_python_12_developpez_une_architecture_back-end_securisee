@@ -1,4 +1,6 @@
 import typer
+from rich.console import Console
+from werkzeug.security import generate_password_hash
 from sqlalchemy.orm import sessionmaker
 from app.database import engine
 from app.models.collaborateur import Collaborateur, Role
@@ -12,11 +14,17 @@ from app.utils.db_utils import (
     delete_table,
     add_collaborateur,
     verifier_permission,
+    validate_montant_restant,
+    validate_event_dates,
+    validate_participants,
+    validate_email,
+    validate_positive_float,
 )
 
-
+console = Console()
 app = typer.Typer(help="Commandes CLI pour gérer les tables de la base de données")
 SessionLocal = sessionmaker(bind=engine)
+
 
 # ==================== LECTURE ====================
 
@@ -29,7 +37,7 @@ def read_collaborateurs():
     Cette commande lit tous les enregistrements de la table `Collaborateur`
     et affiche leurs informations principales.
     """
-    if not verifier_permission("read", "collaborateurs"):
+    if not verifier_permission("lire", "collaborateur"):
         return
 
     read_table(Collaborateur, SessionLocal)
@@ -44,7 +52,7 @@ def read_clients():
     et affiche leurs informations principales.
     """
 
-    if not verifier_permission("read", "clients"):
+    if not verifier_permission("lire", "client"):
         return
 
     read_table(Client, SessionLocal)
@@ -59,7 +67,7 @@ def read_contrats():
     et affiche leurs informations principales.
     """
 
-    if not verifier_permission("read", "contrats"):
+    if not verifier_permission("lire", "contrat"):
         return
 
     read_table(Contrat, SessionLocal)
@@ -74,7 +82,7 @@ def read_evenements():
     et affiche leurs informations principales.
     """
 
-    if not verifier_permission("read", "evenements"):
+    if not verifier_permission("lire", "evenement"):
         return
 
     read_table(Evenement, SessionLocal)
@@ -89,7 +97,7 @@ def read_roles():
     et affiche leurs informations principales.
     """
 
-    if not verifier_permission("read", "roles"):
+    if not verifier_permission("lire", "role"):
         return
 
     return read_table(Role, SessionLocal)
@@ -117,8 +125,10 @@ def add_client(
         contact_commercial_id : ID du collaborateur référent (optionnel).
     """
 
-    if not verifier_permission("create", "client"):
+    if not verifier_permission("creer", "client"):
         return
+
+    email = validate_email(email)
 
     add_table(
         Client,
@@ -144,11 +154,15 @@ def cli_add_collaborateur(
     Ajoute un collaborateur avec mot de passe haché.
     """
 
-    if not verifier_permission("create", "collaborateur"):
+    if not verifier_permission("creer", "collaborateur"):
         return
 
+    email = validate_email(email)
+
     collab = add_collaborateur(SessionLocal, nom, email, mot_de_passe, role_id)
-    typer.echo(f"Collaborateur '{collab['nom']}' ajouté avec succès !")
+    console.print(
+        f"[bold green]Collaborateur '{collab['nom']}' ajouté avec succès ![/]"
+    )
 
 
 @app.command("add-contrat")
@@ -170,8 +184,11 @@ def add_contrat(
         contact_commercial_id : ID du collaborateur commercial responsable.
     """
 
-    if not verifier_permission("create", "contrat"):
+    if not verifier_permission("creer", "contrat"):
         return
+
+    montant_total = validate_positive_float(montant_total)
+    montant_restant = validate_montant_restant(montant_total, montant_restant)
 
     add_table(
         Contrat,
@@ -213,8 +230,11 @@ def add_evenement(
         support_contact_id : ID du collaborateur support (optionnel).
     """
 
-    if not verifier_permission("create", "evenement"):
+    if not verifier_permission("creer", "evenement"):
         return
+
+    date_debut, date_fin = validate_event_dates(date_debut, date_fin)
+    participants, attendues = validate_participants(participants, attendues)
 
     add_table(
         Evenement,
@@ -242,7 +262,7 @@ def add_role(role: str):
         role : Nom du rôle à ajouter.
     """
 
-    if not verifier_permission("create", "role"):
+    if not verifier_permission("creer", "role"):
         return
 
     add_table(Role, SessionLocal, {"role": role})
@@ -272,8 +292,11 @@ def update_client(
         contact_commercial_id : Nouvel ID du collaborateur référent (optionnel).
     """
 
-    if not verifier_permission("update", "client"):
+    if not verifier_permission("modifier", "client"):
         return
+
+    if email:
+        email = validate_email(email)
 
     update_table(
         Client,
@@ -295,6 +318,9 @@ def update_collaborateur(
     nom: str = typer.Option(None),
     email: str = typer.Option(None),
     role_id: int = typer.Option(None),
+    mot_de_passe: str = typer.Option(
+        None, prompt=False, hide_input=True, help="Nouveau mot de passe (optionnel)"
+    ),
 ):
     """
     Modifie un collaborateur existant dans la base de données.
@@ -304,16 +330,27 @@ def update_collaborateur(
         nom : Nouveau nom complet (optionnel).
         email : Nouvelle adresse e-mail (optionnel).
         role_id : Nouvel ID du rôle attribué (optionnel).
+        mot_de_passe: Nouveau mot de passe (optionnel).
     """
 
-    if not verifier_permission("update", "collaborateur"):
+    if not verifier_permission("modifier", "collaborateur"):
         return
+
+    if email:
+        email = validate_email(email)
+
+    mot_de_passe_hache = generate_password_hash(mot_de_passe) if mot_de_passe else None
 
     update_table(
         Collaborateur,
         SessionLocal,
         collab_id,
-        {"nom": nom, "email": email, "role_id": role_id},
+        {
+            "nom": nom,
+            "email": email,
+            "role_id": role_id,
+            "mot_de_passe": mot_de_passe_hache,
+        },
     )
 
 
@@ -338,8 +375,13 @@ def update_contrat(
         contact_commercial_id : Nouvel ID du collaborateur commercial (optionnel).
     """
 
-    if not verifier_permission("update", "contrat"):
+    if not verifier_permission("modifier", "contrat"):
         return
+
+    if montant_total is not None:
+        montant_total = validate_positive_float(montant_total)
+    if montant_total is not None and montant_restant is not None:
+        montant_restant = validate_montant_restant(montant_total, montant_restant)
 
     update_table(
         Contrat,
@@ -384,8 +426,13 @@ def update_evenement(
         support_contact_id : Nouvel ID du collaborateur support (optionnel).
     """
 
-    if not verifier_permission("update", "evenement"):
+    if not verifier_permission("modifier", "evenement"):
         return
+
+    if date_debut and date_fin:
+        date_debut, date_fin = validate_event_dates(date_debut, date_fin)
+    if participants is not None and attendues is not None:
+        participants, attendues = validate_participants(participants, attendues)
 
     update_table(
         Evenement,
@@ -415,7 +462,7 @@ def update_role(role_id: int, role: str = typer.Option(None)):
         role : Nouveau nom du rôle (optionnel).
     """
 
-    if not verifier_permission("update", "role"):
+    if not verifier_permission("modifier", "role"):
         return
 
     update_table(Role, SessionLocal, role_id, {"role": role})
@@ -428,7 +475,7 @@ def update_role(role_id: int, role: str = typer.Option(None)):
 def delete_client(client_id: int):
     """Supprime un client de la base de données."""
 
-    if not verifier_permission("delete", "client"):
+    if not verifier_permission("supprimer", "client"):
         return
 
     delete_table(Client, SessionLocal, client_id)
@@ -438,7 +485,7 @@ def delete_client(client_id: int):
 def delete_collaborateur(collab_id: int):
     """Supprime un collaborateur de la base de données."""
 
-    if not verifier_permission("delete", "collaborateur"):
+    if not verifier_permission("supprimer", "collaborateur"):
         return
 
     delete_table(Collaborateur, SessionLocal, collab_id)
@@ -448,7 +495,7 @@ def delete_collaborateur(collab_id: int):
 def delete_contrat(contrat_id: int):
     """Supprime un contrat de la base de données."""
 
-    if not verifier_permission("delete", "contrat"):
+    if not verifier_permission("supprimer", "contrat"):
         return
 
     delete_table(Contrat, SessionLocal, contrat_id)
@@ -458,7 +505,7 @@ def delete_contrat(contrat_id: int):
 def delete_evenement(evenement_id: int):
     """Supprime un événement de la base de données."""
 
-    if not verifier_permission("delete", "evenement"):
+    if not verifier_permission("supprimer", "evenement"):
         return
 
     delete_table(Evenement, SessionLocal, evenement_id)
@@ -468,7 +515,7 @@ def delete_evenement(evenement_id: int):
 def delete_role(role_id: int):
     """Supprime un rôle de la base de données."""
 
-    if not verifier_permission("delete", "role"):
+    if not verifier_permission("supprimer", "role"):
         return
 
     delete_table(Role, SessionLocal, role_id)

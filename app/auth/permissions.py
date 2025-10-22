@@ -1,19 +1,20 @@
 # Permissions par défaut
 DEFAULT_PERMISSIONS = {
     "gestion": {
-        "collaborateur": ["read", "create", "update", "delete"],
-        "client": ["read"],
-        "contrat": ["read", "create", "update", "delete"],
-        "evenement": ["read", "update"],
+        "collaborateur": ["lire", "creer", "modifier", "supprimer"],
+        "client": ["lire"],
+        "contrat": ["lire", "creer", "modifier", "supprimer"],
+        "evenement": ["lire", "modifier"],
+        "role": ["lire"],
     },
     "commercial": {
-        "client": ["read", "create", "update"],
-        "contrat": ["read", "create", "update"],
-        "evenement": ["read", "create"],
+        "client": ["lire", "creer", "modifier"],
+        "contrat": ["lire", "creer", "modifier"],
+        "evenement": ["lire", "creer"],
     },
     "support": {
-        "client": ["read"],
-        "contrat": ["read"],
-        "evenement": ["read", "update"],
+        "client": ["lire"],
+        "contrat": ["lire"],
+        "evenement": ["lire", "modifier"],
     },
 }
