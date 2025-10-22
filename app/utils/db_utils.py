@@ -4,14 +4,16 @@ import re
 from datetime import datetime
 from sqlalchemy import inspect
 from typing import Type
-from app.auth.utils import verifier_token
-from werkzeug.security import generate_password_hash
+from app.auth.utils import verifier_token  # Pour décoder et vérifier le JWT
+from werkzeug.security import generate_password_hash  # Pour sécuriser les mots de passe
 from app.models.collaborateur import Collaborateur
-from app.auth.permissions import DEFAULT_PERMISSIONS
-from rich.console import Console
+from app.auth.permissions import DEFAULT_PERMISSIONS  # Permissions par rôle
+from rich.console import Console  # Pour un affichage stylisé
 from rich.table import Table
 from rich.panel import Panel
 
+
+# Initialisation de la console Rich pour affichage coloré
 console = Console()
 
 
@@ -30,14 +32,20 @@ def verifier_connexion():
     token_path = ".token"
     if not os.path.exists(token_path):
         console.print(
-            "[bold red]Aucun token trouvé. Veuillez vous connecter avant de lire les données.[/]"
+            Panel.fit(
+                "[bold red]Aucun token trouvé.[/]\n[white]Veuillez vous connecter avant de lire les données.[/]",
+                border_style="red",
+            )
         )
         raise typer.Exit(code=1)
     with open(token_path, "r") as f:
         token = f.read().strip()
     payload = verifier_token(token)
     console.print(
-        f"[bold green]Utilisateur connecté :[/] [cyan]{payload['email']}[/] ([magenta]{payload['role']}[/])"
+        Panel.fit(
+            f"[bold green]Utilisateur connecté :[/] [cyan]{payload['email']}[/] ([magenta]{payload['role']}[/])",
+            border_style="green",
+        )
     )
     return payload
 
@@ -91,18 +99,14 @@ def validate_montant_restant(montant_total: float, montant_restant: float) -> fl
     return montant_restant
 
 
-def validate_event_dates(date_debut: str, date_fin: str) -> tuple[str, str]:
+def validate_single_date(date_str: str) -> datetime:
     """
-    Vérifie que les dates sont au format ISO et que date_fin >= date_debut
+    Vérifie que la date est au format ISO et retourne un objet datetime.
     """
     try:
-        d1 = datetime.fromisoformat(date_debut)
-        d2 = datetime.fromisoformat(date_fin)
+        return datetime.fromisoformat(date_str)
     except ValueError:
         raise typer.BadParameter("Format de date invalide (YYYY-MM-DD HH:MM:SS)")
-    if d2 < d1:
-        raise typer.BadParameter("date_fin doit être supérieure ou égale à date_debut")
-    return date_debut, date_fin
 
 
 def validate_participants(participants: int, attendues: int) -> tuple[int, int]:
@@ -124,7 +128,12 @@ def validate_participants(participants: int, attendues: int) -> tuple[int, int]:
 def afficher_table(modele: Type, resultats: list[dict]):
     """Affiche les résultats d'une table sous forme de tableau coloré."""
     if not resultats:
-        console.print(f"[yellow]Aucune donnée trouvée dans {modele.__name__}.[/]")
+        console.print(
+            Panel.fit(
+                f"[yellow]Aucune donnée trouvée dans {modele.__name__}.[/]",
+                border_style="yellow",
+            )
+        )
         return
     table = Table(title=f"{modele.__name__}", header_style="bold cyan")
     for col in resultats[0].keys():
@@ -190,7 +199,12 @@ def add_table(modele: Type, SessionLocal, data: dict):
         db.add(instance)
         db.commit()
         db.refresh(instance)
-        console.print(f"[bold green]{modele.__name__} ajouté avec succès ![/]")
+        console.print(
+            Panel.fit(
+                f"[bold green]{modele.__name__} ajouté avec succès ![/]",
+                border_style="green",
+            )
+        )
         return {col: getattr(instance, col) for col in colonnes}
     finally:
         db.close()
@@ -220,14 +234,22 @@ def update_table(
             db.query(modele).filter(getattr(modele, id_field) == record_id).first()
         )
         if not instance:
-            console.print(f"[red] {modele.__name__} {record_id} non trouvé.[/]")
+            console.print(
+                Panel.fit(
+                    f"[red]{modele.__name__} {record_id} non trouvé.[/]",
+                    border_style="red",
+                )
+            )
             return
         for k, v in data.items():
             if k in colonnes and v is not None:
                 setattr(instance, k, v)
         db.commit()
         console.print(
-            f"[bold green]{modele.__name__} {record_id} mis à jour avec succès ![/]"
+            Panel.fit(
+                f"[bold green]{modele.__name__} {record_id} mis à jour avec succès ![/]",
+                border_style="green",
+            )
         )
         return {col: getattr(instance, col) for col in colonnes}
     finally:
@@ -252,12 +274,20 @@ def delete_table(modele: Type, SessionLocal, record_id: int, id_field: str = "id
             .one_or_none()
         )
         if not instance:
-            console.print(f"[red]{modele.__name__} {record_id} non trouvé.[/]")
+            console.print(
+                Panel.fit(
+                    f"[red]{modele.__name__} {record_id} non trouvé.[/]",
+                    border_style="red",
+                )
+            )
             return
         db.delete(instance)
         db.commit()
         console.print(
-            f"[bold red]{modele.__name__} {record_id} supprimé avec succès ![/]"
+            Panel.fit(
+                f"[bold red]{modele.__name__} {record_id} supprimé avec succès ![/]",
+                border_style="red",
+            )
         )
     finally:
         db.close()

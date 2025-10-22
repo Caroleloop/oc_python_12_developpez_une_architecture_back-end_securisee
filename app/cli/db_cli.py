@@ -1,8 +1,10 @@
 import typer
 from rich.console import Console
-from werkzeug.security import generate_password_hash
+from werkzeug.security import (
+    generate_password_hash,
+)  # Pour sécuriser les mots de passe des collaborateurs
 from sqlalchemy.orm import sessionmaker
-from app.database import engine
+from app.database import engine  # Connexion à la base de données
 from app.models.collaborateur import Collaborateur, Role
 from app.models.client import Client
 from app.models.contrat import Contrat
@@ -15,18 +17,24 @@ from app.utils.db_utils import (
     add_collaborateur,
     verifier_permission,
     validate_montant_restant,
-    validate_event_dates,
     validate_participants,
     validate_email,
     validate_positive_float,
+    validate_single_date,
 )
 
+# Initialise la console Rich pour l'affichage coloré
 console = Console()
+
+# Initialise l'application Typer pour les commandes CLI
 app = typer.Typer(help="Commandes CLI pour gérer les tables de la base de données")
+
+# Création d'une session SQLAlchemy pour interagir avec la DB
 SessionLocal = sessionmaker(bind=engine)
 
 
 # ==================== LECTURE ====================
+# Commandes pour lire et afficher les données de chaque table
 
 
 @app.command("read-collaborateurs")
@@ -39,7 +47,7 @@ def read_collaborateurs():
     """
     if not verifier_permission("lire", "collaborateur"):
         return
-
+    console.print("[bold cyan]Lecture des collaborateurs[/]")
     read_table(Collaborateur, SessionLocal)
 
 
@@ -54,7 +62,7 @@ def read_clients():
 
     if not verifier_permission("lire", "client"):
         return
-
+    console.print("[bold cyan]Lecture des clients[/]")
     read_table(Client, SessionLocal)
 
 
@@ -69,7 +77,7 @@ def read_contrats():
 
     if not verifier_permission("lire", "contrat"):
         return
-
+    console.print("[bold cyan]Lecture des contrats[/]")
     read_table(Contrat, SessionLocal)
 
 
@@ -84,7 +92,7 @@ def read_evenements():
 
     if not verifier_permission("lire", "evenement"):
         return
-
+    console.print("[bold cyan]Lecture des événements[/]")
     read_table(Evenement, SessionLocal)
 
 
@@ -99,11 +107,12 @@ def read_roles():
 
     if not verifier_permission("lire", "role"):
         return
-
+    console.print("[bold cyan]Lecture des rôles[/]")
     return read_table(Role, SessionLocal)
 
 
 # ==================== AJOUT ====================
+# Commandes pour créer de nouvelles entrées dans les tables
 
 
 @app.command("add-client")
@@ -128,7 +137,7 @@ def add_client(
     if not verifier_permission("creer", "client"):
         return
 
-    email = validate_email(email)
+    email = validate_email(email)  # Vérifie la validité de l'email
 
     add_table(
         Client,
@@ -233,7 +242,8 @@ def add_evenement(
     if not verifier_permission("creer", "evenement"):
         return
 
-    date_debut, date_fin = validate_event_dates(date_debut, date_fin)
+    date_debut = validate_single_date(date_debut)
+    date_fin = validate_single_date(date_fin)
     participants, attendues = validate_participants(participants, attendues)
 
     add_table(
@@ -269,6 +279,7 @@ def add_role(role: str):
 
 
 # ==================== MODIFICATION ====================
+# Commandes pour modifier des enregistrements existants
 
 
 @app.command("update-client")
@@ -429,8 +440,15 @@ def update_evenement(
     if not verifier_permission("modifier", "evenement"):
         return
 
-    if date_debut and date_fin:
-        date_debut, date_fin = validate_event_dates(date_debut, date_fin)
+    if date_debut:
+        date_debut = validate_single_date(date_debut)
+
+    if date_fin:
+        date_fin = validate_single_date(date_fin)
+
+    if date_debut and date_fin and date_fin < date_debut:
+        raise typer.BadParameter("date_fin doit être supérieure à date_debut")
+
     if participants is not None and attendues is not None:
         participants, attendues = validate_participants(participants, attendues)
 
@@ -469,6 +487,7 @@ def update_role(role_id: int, role: str = typer.Option(None)):
 
 
 # ==================== SUPPRESSION ====================
+# Commandes pour supprimer des enregistrements
 
 
 @app.command("delete-client")
