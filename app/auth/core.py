@@ -48,7 +48,7 @@ def login(email: str, mot_de_passe: str, expire_minutes: int = 60) -> str:
 
         # Prépare le payload du JWT
         payload = {
-            "sub": str(collab.id),  # Identifiant du collaborateur
+            "id": str(collab.id),  # Identifiant du collaborateur
             "email": collab.email,
             "role": collab.role.role,
             "exp": datetime.now(timezone.utc)

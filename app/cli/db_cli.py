@@ -1,5 +1,6 @@
 import typer
 from rich.console import Console
+from datetime import datetime
 from werkzeug.security import (
     generate_password_hash,
 )  # Pour sécuriser les mots de passe des collaborateurs
@@ -146,6 +147,8 @@ def add_client(
     email = validate_email(email)  # Vérifie la validité de l'email
     contact_commercial_id = payload["id"] if payload["role"] == "commercial" else None
 
+    now = datetime.now()
+
     add_table(
         Client,
         SessionLocal,
@@ -155,6 +158,8 @@ def add_client(
             "telephone": telephone,
             "entreprise": entreprise,
             "contact_commercial_id": contact_commercial_id,
+            "date_creation": now,
+            "derniere_mise_a_jour": now,
         },
     )
 
@@ -187,7 +192,6 @@ def add_contrat(
     montant_restant: float,
     statut_contrat: bool,
     client_id: int,
-    contact_commercial_id: int,
 ):
     """
     Ajoute un nouveau contrat dans la base de données.
@@ -205,7 +209,16 @@ def add_contrat(
     payload = verifier_connexion()
     montant_total = validate_positive_float(montant_total)
     montant_restant = validate_montant_restant(montant_total, montant_restant)
-    contact_commercial_id = payload["id"] if payload["role"] == "commercial" else None
+
+    session = SessionLocal()
+    client = session.query(Client).filter(Client.id == client_id).first()
+    if not client:
+        print(f"Client avec l'ID {client_id} introuvable")
+        return
+
+    contact_commercial_id = client.contact_commercial_id
+
+    now = datetime.now()
 
     collatéral = add_table(
         Contrat,
@@ -215,6 +228,7 @@ def add_contrat(
             "montant_restant": montant_restant,
             "statut_contrat": statut_contrat,
             "client_id": client_id,
+            "date_creation": now,
             "contact_commercial_id": contact_commercial_id,
         },
     )
