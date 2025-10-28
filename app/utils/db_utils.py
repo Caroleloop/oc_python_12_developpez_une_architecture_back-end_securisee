@@ -336,6 +336,24 @@ def delete_table(modele: Type, SessionLocal, record_id: int, id_field: str = "id
 # ==================== UTILITAIRES METIER ====================
 
 
+def verifier_modifications(**kwargs) -> bool:
+    """
+    Vérifie si au moins un argument de modification est fourni.
+
+    Paramètres :
+        kwargs : dictionnaire des arguments de la commande (ex : montant_total=..., statut_contrat=...)
+
+    Retourne :
+        True si au moins une valeur est différente de None, False sinon (et affiche un avertissement).
+    """
+    if all(value is None for value in kwargs.values()):
+        console.print(
+            "[yellow]Aucune modification spécifiée. Aucun champ à mettre à jour.[/]"
+        )
+        return False
+    return True
+
+
 def can_create_evenement(payload: dict, contrat) -> bool:
     """
     Vérifie si l'utilisateur peut créer un événement pour ce contrat.
@@ -350,10 +368,102 @@ def can_create_evenement(payload: dict, contrat) -> bool:
 
     console = Console()
 
-    if payload["role"] == "commercial":
-        if not contrat or not contrat.statut_contrat:
-            console.print(
-                "[bold red]Impossible de créer un événement : contrat non signé[/]"
-            )
-            return False
+    # Vérifie le rôle
+    if payload["role"] != "commercial":
+        console.print("[bold red]Seuls les commerciaux peuvent créer un événement.[/]")
+        return False
+
+    # Vérifie que le contrat existe
+    if not contrat:
+        console.print("[bold red]Aucun contrat trouvé pour cet événement.[/]")
+        return False
+
+    # Vérifie que le contrat est signé
+    if not contrat.statut_contrat:
+        console.print(
+            "[bold red]Impossible de créer un événement : contrat non signé.[/]"
+        )
+        return False
+
+    # Vérifie que le commercial connecté gère bien le client du contrat
+    if contrat.contact_commercial_id != payload["id"]:
+        console.print(
+            "[bold red]Vous ne pouvez créer un événement que pour vos propres clients.[/]"
+        )
+        return False
+
+    return True
+
+
+def can_update_contrat(payload: dict, contrat) -> bool:
+    """
+    Vérifie si l'utilisateur peut modifier un contrat.
+
+    Règles :
+    - les gestionnaires peuvent modifier un contrat.
+    - Le commercial ne peut modifier que les contrats de ses propres clients.
+    """
+
+    from rich.console import Console
+
+    console = Console()
+
+    # Les rôles gestion peuvent tout modifier
+    if payload["role"] == "gestion":
+        return True
+
+    # Vérifie le rôle commercial
+    if payload["role"] != "commercial":
+        console.print("[bold red]Seuls les commerciaux peuvent modifier un contrat.[/]")
+        return False
+
+    # Vérifie que le contrat existe
+    if not contrat:
+        console.print("[bold red]Contrat introuvable.[/]")
+        return False
+
+    # Vérifie que le commercial connecté est bien celui du contrat
+    if contrat.contact_commercial_id != payload["id"]:
+        console.print(
+            "[bold red]Vous ne pouvez modifier que les contrats de vos propres clients.[/]"
+        )
+        return False
+
+    return True
+
+
+def can_update_evenement(payload: dict, evenement) -> bool:
+    """
+    Vérifie si un membre du support peut modifier un événement.
+
+    Règles
+
+
+    - Seuls les membres du support peuvent modifier un événement.
+    - Ils ne peuvent modifier que les événements dont ils sont responsables.
+    """
+
+    from rich.console import Console
+
+    console = Console()
+
+    # Vérifie le rôle
+    if payload["role"] != "support":
+        console.print(
+            "[bold red]Seuls les membres du support peuvent modifier un événement.[/]"
+        )
+        return False
+
+    # Vérifie que l'événement existe
+    if not evenement:
+        console.print("[bold red]Événement introuvable.[/]")
+        return False
+
+    # Vérifie que le support connecté est bien responsable de cet événement
+    if evenement.support_contact_id != payload["id"]:
+        console.print(
+            "[bold red]Vous ne pouvez modifier que les événements qui vous sont attribués.[/]"
+        )
+        return False
+
     return True

@@ -27,6 +27,9 @@ from app.utils.db_utils import (
     validate_single_date,
     afficher_table,
     can_create_evenement,
+    can_update_contrat,
+    can_update_evenement,
+    verifier_modifications,
 )
 
 # Initialise la console Rich pour l'affichage coloré
@@ -206,7 +209,6 @@ def add_contrat(
 
     if not verifier_permission("creer", "contrat"):
         return
-    payload = verifier_connexion()
     montant_total = validate_positive_float(montant_total)
     montant_restant = validate_montant_restant(montant_total, montant_restant)
 
@@ -275,8 +277,13 @@ def add_evenement(
         db.close()
         return
 
-    date_debut = validate_single_date(date_debut)
-    date_fin = validate_single_date(date_fin)
+    if date_debut:
+        date_debut = validate_single_date(date_debut)
+    if date_fin:
+        date_fin = validate_single_date(date_fin)
+    if date_debut and date_fin and date_fin < date_debut:
+        raise typer.BadParameter("date_fin doit être supérieure à date_debut")
+
     participants, attendues = validate_participants(participants, attendues)
 
     add_table(
@@ -342,6 +349,15 @@ def update_client(
     if email:
         email = validate_email(email)
 
+    if not verifier_modifications(
+        nom_complet=nom_complet,
+        email=email,
+        telephone=telephone,
+        entreprise=entreprise,
+        contact_commercial_id=contact_commercial_id,
+    ):
+        return
+
     update_table(
         Client,
         SessionLocal,
@@ -385,6 +401,14 @@ def update_collaborateur(
 
     mot_de_passe_hache = generate_password_hash(mot_de_passe) if mot_de_passe else None
 
+    if not verifier_modifications(
+        nom=nom,
+        email=email,
+        role_id=role_id,
+        mot_de_passe=mot_de_passe,
+    ):
+        return
+
     update_table(
         Collaborateur,
         SessionLocal,
@@ -422,10 +446,42 @@ def update_contrat(
     if not verifier_permission("modifier", "contrat"):
         return
 
+    payload = verifier_connexion()
+    db = SessionLocal()
+
+    contrat = db.query(Contrat).filter(Contrat.id == contrat_id).first()
+    if not contrat:
+        console.print(f"[red]Erreur : Aucun contrat trouvé avec l'ID {contrat_id}.[/]")
+        db.close()
+        return
+
+    # Validation des montants
     if montant_total is not None:
         montant_total = validate_positive_float(montant_total)
-    if montant_total is not None and montant_restant is not None:
-        montant_restant = validate_montant_restant(montant_total, montant_restant)
+    if montant_restant is not None:
+        montant_restant = validate_positive_float(montant_restant)
+
+    # Validation cohérente : montant_restant ≤ montant_total
+    total = montant_total if montant_total is not None else contrat.montant_total
+    restant = (
+        montant_restant if montant_restant is not None else contrat.montant_restant
+    )
+    validate_montant_restant(total, restant)
+
+    # Vérification métier : seul le commercial responsable peut modifier
+    if not can_update_contrat(payload, contrat):
+        db.close()
+        return
+
+    if not verifier_modifications(
+        montant_total=montant_total,
+        montant_restant=montant_restant,
+        statut_contrat=statut_contrat,
+        client_id=client_id,
+        contact_commercial_id=contact_commercial_id,
+    ):
+        db.close()
+        return
 
     update_table(
         Contrat,
@@ -439,6 +495,7 @@ def update_contrat(
             "contact_commercial_id": contact_commercial_id,
         },
     )
+    db.close()
 
 
 @app.command("update-evenement")
@@ -485,6 +542,28 @@ def update_evenement(
     if participants is not None and attendues is not None:
         participants, attendues = validate_participants(participants, attendues)
 
+    payload = verifier_connexion()
+    db = SessionLocal()
+    evenement = db.query(Evenement).filter(Evenement.id == evenement_id).first()
+
+    if not can_update_evenement(payload, evenement):
+        db.close()
+        return
+
+    if not verifier_modifications(
+        date_debut=date_debut,
+        date_fin=date_fin,
+        lieu=lieu,
+        participants=participants,
+        attendues=attendues,
+        notes=notes,
+        contrat_id=contrat_id,
+        client_id=client_id,
+        support_contact_id=support_contact_id,
+    ):
+        db.close()
+        return
+
     update_table(
         Evenement,
         SessionLocal,
@@ -514,6 +593,9 @@ def update_role(role_id: int, role: str = typer.Option(None)):
     """
 
     if not verifier_permission("modifier", "role"):
+        return
+
+    if not verifier_modifications(role=role):
         return
 
     update_table(Role, SessionLocal, role_id, {"role": role})
@@ -637,11 +719,3 @@ def filter_contrats(non_signe: bool = False, non_payes: bool = False):
     ]
     afficher_table(Contrat, resultats)
     db.close()
-
-
-if __name__ == "__main__":
-    try:
-        app()
-    except Exception as e:
-        sentry_sdk.capture_exception(e)
-        raise

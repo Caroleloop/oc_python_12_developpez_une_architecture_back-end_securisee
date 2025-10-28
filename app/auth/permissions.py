@@ -3,9 +3,9 @@ DEFAULT_PERMISSIONS = {
     "gestion": {
         "collaborateur": ["lire", "creer", "modifier", "supprimer"],
         "client": ["lire"],
-        "contrat": ["lire", "creer", "modifier", "supprimer"],
+        "contrat": ["lire", "creer", "modifier"],
         "evenement": ["lire", "modifier"],
-        "role": ["lire"],
+        "role": ["lire", "creer", "modifier", "supprimer"],
     },
     "commercial": {
         "client": ["lire", "creer", "modifier"],

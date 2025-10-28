@@ -1,4 +1,5 @@
 import typer
+from sentry_init import sentry_sdk
 from app.cli import (
     auth_cli,
     db_cli,
@@ -20,4 +21,8 @@ app.add_typer(db_cli.app, name="db", help="Commandes pour gérer les données")
 if __name__ == "__main__":
     # Démarre l'application CLI principale
     # Toutes les commandes ajoutées via add_typer seront disponibles ici
-    app()
+    try:
+        app()
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
+        raise
