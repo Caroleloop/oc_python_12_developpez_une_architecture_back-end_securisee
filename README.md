@@ -88,13 +88,13 @@ Les permissions sont définies dans `permissions.py`.
 
 CLI global du CRM
 
-**auth** Commandes pour l'authentification
-**db** Commandes pour gérer les données
+- **auth** Commandes pour l'authentification
+- **db** Commandes pour gérer les données
 
 ### Authentification
 
-**login** Commande CLI pour se connecter et obtenir un token JWT.
-**logout** Déconnecte l'utilisateur en supprimant le token local.
+- **login** Commande CLI pour se connecter et obtenir un token JWT.
+- **logout** Déconnecte l'utilisateur en supprimant le token local.
 
 ```bash
 python -m app.cli auth login --email "user@example.com" --mot-de-passe "MotDePasse"
@@ -105,10 +105,10 @@ python -m app.cli auth logout
 
 #### Lecture
 
-**read-collaborateurs** Affiche tous les collaborateurs enregistrés dans la base de données.
-**read-clients** Affiche tous les clients enregistrés dans la base de données.
-**read-contrats** Affiche tous les contrats enregistrés dans la base de données.
-**read-evenements** Affiche tous les événements enregistrés dans la base de données.
+- **read-collaborateurs** Affiche tous les collaborateurs enregistrés dans la base de données.
+- **read-clients** Affiche tous les clients enregistrés dans la base de données.
+- **read-contrats** Affiche tous les contrats enregistrés dans la base de données.
+- **read-evenements** Affiche tous les événements enregistrés dans la base de données.
 
 ```bash
 python -m app.cli db read-clients
@@ -120,11 +120,11 @@ python -m app.cli db read-roles
 
 #### Ajout
 
-**add-client** Ajoute un nouveau client dans la base de données.
-**add-collaborateur** Ajoute un collaborateur avec mot de passe haché.
-**add-contrat** Ajoute un nouveau contrat dans la base de données.
-**add-evenement** Ajoute un nouvel événement dans la base de données.
-**add-role** Ajoute un nouveau rôle dans la base de données.
+- **add-client** Ajoute un nouveau client dans la base de données.
+- **add-collaborateur** Ajoute un collaborateur avec mot de passe haché.
+- **add-contrat** Ajoute un nouveau contrat dans la base de données.
+- **add-evenement** Ajoute un nouvel événement dans la base de données.
+- **add-role** Ajoute un nouveau rôle dans la base de données.
 
 ```bash
 python -m app.cli db add-client "Marie Dupont" marie.dupont@email.com "0601020304" --entreprise "Dupont Consulting"
@@ -136,11 +136,11 @@ python -m app.cli db add-role "administrateur"
 
 #### Mise à jour
 
-**update-client** Modifie un client existant dans la base de données.
-**update-collaborateur** Modifie un collaborateur existant dans la base de données.
-**update-contrat** Modifie un contrat existant dans la base de données.
-**update-evenement** Modifie un événement existant dans la base de données.
-**update-role** Modifie un rôle existant dans la base de données.
+- **update-client** Modifie un client existant dans la base de données.
+- **update-collaborateur** Modifie un collaborateur existant dans la base de données.
+- **update-contrat** Modifie un contrat existant dans la base de données.
+- **update-evenement** Modifie un événement existant dans la base de données.
+- **update-role** Modifie un rôle existant dans la base de données.
 
 ```bash
 python -m app.cli db update-client 1 --telephone "0611223344" --entreprise "Nouvelle Société"
@@ -152,11 +152,11 @@ python -m app.cli db update-role 2 --role "support technique"
 
 #### Suppression
 
-**delete-client** Supprime un client de la base de données.
-**delete-collaborateur** Supprime un collaborateur de la base de données.
-**delete-contrat** Supprime un contrat de la base de données.
-**delete-evenement** Supprime un événement de la base de données.
-**delete-role** Supprime un rôle de la base de données.
+- **delete-client** Supprime un client de la base de données.
+- **delete-collaborateur** Supprime un collaborateur de la base de données.
+- **delete-contrat** Supprime un contrat de la base de données.
+- **delete-evenement** Supprime un événement de la base de données.
+- **delete-role** Supprime un rôle de la base de données.
 
 ```bash
 python -m app.cli db delete-client 1
@@ -168,8 +168,8 @@ python -m app.cli db delete-role 5
 
 #### Filtrage
 
-**filter-evenements** Filtre les événements selon : - --sans-support : événements sans support associé - (automatique) support : uniquement ses propres événements
-**filter-contrats** Filtre les contrats selon le statut. Exemple : - --non-signe : contrats non signés - --non-payes : contrats avec montant restant > 0
+- **filter-evenements** Filtre les événements selon : - --sans-support : événements sans support associé - (automatique) support : uniquement ses propres événements
+- **filter-contrats** Filtre les contrats selon le statut. Exemple : - --non-signe : contrats non signés - --non-payes : contrats avec montant restant > 0
 
 Événements sans support :
 
