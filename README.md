@@ -243,15 +243,17 @@ python -m app db init
 
 ## Règles métier
 
-| Action                                  | Rôle autorisé        | Conditions                                     |
-| --------------------------------------- | -------------------- | ---------------------------------------------- |
-| Créer un client                         | Commercial           | Devient automatiquement son contact commercial |
-| Modifier un client                      | Commercial           | Doit être le commercial associé                |
-| Créer un contrat                        | Gestion              | —                                              |
-| Modifier un contrat                     | Gestion / Commercial | Commercial uniquement pour ses clients         |
-| Créer un événement                      | Commercial           | Seulement si le contrat est signé              |
-| Modifier un événement                   | Gestion / Support    | Support seulement pour ses propres événements  |
-| Créer/supprimer collaborateurs ou rôles | Gestion              | —                                              |
+Tous les collaborateurs doivent pouvoir accéder à tous les clients, contrats et événements en lecture seule.
+
+| Action                                           | Rôle autorisé        | Conditions                                     |
+| ------------------------------------------------ | -------------------- | ---------------------------------------------- |
+| Créer un client                                  | Commercial           | Devient automatiquement son contact commercial |
+| Modifier un client                               | Commercial           | Doit être le commercial associé                |
+| Créer un contrat                                 | Gestion              | —                                              |
+| Modifier un contrat                              | Gestion / Commercial | Commercial uniquement pour ses clients         |
+| Créer un événement                               | Commercial           | Seulement si le contrat est signé              |
+| Modifier un événement                            | Gestion / Support    | Support seulement pour ses propres événements  |
+| Créer/modifier/supprimer collaborateurs ou rôles | Gestion              | —                                              |
 
 ## Journalisation & Observabilité
 
