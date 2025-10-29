@@ -1,6 +1,4 @@
-from pathlib import Path
-
-readme_content = """# 🏢 Epic Events CRM – Backend Sécurisé (CLI)
+# 🏢 Epic Events CRM – Backend Sécurisé (CLI)
 
 ## Description
 
