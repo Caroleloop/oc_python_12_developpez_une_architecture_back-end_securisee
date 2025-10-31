@@ -386,7 +386,7 @@ def can_create_evenement(payload: dict, contrat) -> bool:
         return False
 
     # Vérifie que le commercial connecté gère bien le client du contrat
-    if contrat.contact_commercial_id != payload["id"]:
+    if int(contrat.contact_commercial_id) != int(payload["id"]):
         console.print(
             "[bold red]Vous ne pouvez créer un événement que pour vos propres clients.[/]"
         )
@@ -423,7 +423,7 @@ def can_update_contrat(payload: dict, contrat) -> bool:
         return False
 
     # Vérifie que le commercial connecté est bien celui du contrat
-    if contrat.contact_commercial_id != payload["id"]:
+    if int(contrat.contact_commercial_id) != int(payload["id"]):
         console.print(
             "[bold red]Vous ne pouvez modifier que les contrats de vos propres clients.[/]"
         )
@@ -434,13 +434,12 @@ def can_update_contrat(payload: dict, contrat) -> bool:
 
 def can_update_evenement(payload: dict, evenement) -> bool:
     """
-    Vérifie si un membre du support peut modifier un événement.
+    Vérifie si un membre du support ou gestion peut modifier un événement.
 
     Règles
 
-
-    - Seuls les membres du support peuvent modifier un événement.
-    - Ils ne peuvent modifier que les événements dont ils sont responsables.
+    - Les gestionnaires peuvent modifier n'importe quel événement.
+    - Les membres du support peuvent modifier uniquement les événements qui leur sont attribués.
     """
 
     from rich.console import Console
@@ -448,6 +447,10 @@ def can_update_evenement(payload: dict, evenement) -> bool:
     console = Console()
 
     # Vérifie le rôle
+    if payload["role"] == "gestion":
+        # Gestionnaires peuvent modifier tout
+        return True
+
     if payload["role"] != "support":
         console.print(
             "[bold red]Seuls les membres du support peuvent modifier un événement.[/]"
@@ -460,10 +463,50 @@ def can_update_evenement(payload: dict, evenement) -> bool:
         return False
 
     # Vérifie que le support connecté est bien responsable de cet événement
-    if evenement.support_contact_id != payload["id"]:
+    if int(evenement.support_contact_id) != int(payload["id"]):
         console.print(
             "[bold red]Vous ne pouvez modifier que les événements qui vous sont attribués.[/]"
         )
         return False
 
     return True
+
+
+def can_update_client(payload: dict, client) -> bool:
+    """
+    Vérifie si l'utilisateur connecté a le droit de modifier un client.
+
+    Règles :
+    - Les gestionnaires peuvent modifier tous les clients.
+    - Les commerciaux ne peuvent modifier que leurs propres clients.
+    - Le support ne peut pas modifier les clients.
+    """
+    from rich.console import Console
+
+    console = Console()
+
+    # Gestionnaires → accès total
+    if payload["role"] == "gestion":
+        return True
+
+    # Commerciaux → seulement leurs clients
+    if payload["role"] == "commercial":
+        if not client:
+            console.print("[bold red]Client introuvable.[/]")
+            return False
+        try:
+            if int(client.contact_commercial_id) != int(payload["id"]):
+                console.print(
+                    "[bold red]Vous ne pouvez modifier que vos propres clients.[/]"
+                )
+                return False
+        except (ValueError, TypeError):
+            console.print(
+                "[bold red]Erreur lors de la vérification du commercial du client.[/]"
+            )
+            return False
+        return True
+
+    # Support → pas d’accès
+    console.print("[bold red]Le support ne peut pas modifier les clients.[/]")
+    return False

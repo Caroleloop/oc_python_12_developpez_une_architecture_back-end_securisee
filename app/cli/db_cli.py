@@ -30,6 +30,7 @@ from app.utils.db_utils import (
     can_update_contrat,
     can_update_evenement,
     verifier_modifications,
+    can_update_client,
 )
 
 # Initialise la console Rich pour l'affichage coloré
@@ -349,6 +350,14 @@ def update_client(
     if email:
         email = validate_email(email)
 
+    payload = verifier_connexion()
+    db = SessionLocal()
+    client = db.query(Client).filter(Client.id == client_id).first()
+
+    if not can_update_client(payload, client):
+        db.close()
+        return
+
     if not verifier_modifications(
         nom_complet=nom_complet,
         email=email,
@@ -356,6 +365,7 @@ def update_client(
         entreprise=entreprise,
         contact_commercial_id=contact_commercial_id,
     ):
+        db.close()
         return
 
     update_table(
