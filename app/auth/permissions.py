@@ -18,3 +18,8 @@ DEFAULT_PERMISSIONS = {
         "evenement": ["lire", "modifier"],
     },
 }
+
+
+def get_default_permissions(role_name: str):
+    # retourne un dict JSON simulant les permissions
+    return {"read": True, "write": False}
